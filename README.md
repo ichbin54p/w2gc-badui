@@ -59,3 +59,19 @@ An example of joining the server we just ran
 ```sh
 ./client -ip localhost -p 25565 -n 54p
 ```
+
+### Usage
+
+#### Client usage
+
+The client is pretty simple, once you've connected, 2 windows should pop-up, 1 window being the media player (VLC) and the other, a video control "panel" (SDL)
+
+Focus on the video control "panel" to use it, you can do the following:
+
+- `SPACE` pause the video for everyone, including you
+- `LEFT` skip back 5 seconds
+- `RIGHT` skip forward 5 seconds
+- `UP` increase volume by 5%
+- `DOWN` decrease volume by 5%
+
+If the video control window is closed, the client will automaticly quit and close the media player as well as clean up. It is recommend to close the video control window so you get a clean exit.
