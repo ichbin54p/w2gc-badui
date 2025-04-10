@@ -192,7 +192,13 @@ void* handle_client(void* args){
                                 chunk = malloc(mb);
 
                                 while ((br = fread(chunk, 1, mb, f)) > 0){
-                                    send(clients[id].sock, chunk, br, 0);
+                                    int status = send(clients[id].sock, chunk, br, 0);
+
+                                    if (status < 0){
+                                        printf("[SERVER] [HANDLE_CLIENT_%d] %s: disconnected during video transfer\n", id, name);
+
+                                        break;
+                                    }
                                 }
                             } else {
                                 chunk = malloc(fsize);
