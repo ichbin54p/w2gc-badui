@@ -118,7 +118,7 @@ void* handle_client(void* args){
 
         if (ready > 0){
             if (auth == 0){
-                c = h_recv(clients[id].sock, &usize, sizeof(int), 0);
+                c = h_recv(clients[id].sock, &usize, 4, 0);
 
                 if (c <= 0){
                     break;
@@ -143,7 +143,7 @@ void* handle_client(void* args){
 
                 auth = 2;
             } else if (auth == 2){
-                c = recv(clients[id].sock, &op, sizeof(int), 0);
+                c = recv(clients[id].sock, &op, 4, 0);
 
                 if (c <= 0){
                     break;
@@ -174,7 +174,7 @@ void* handle_client(void* args){
                             printf("[SERVER] [HANDLE_CLIENT_%d] %s: sending %ldB file\n", id, name, fsize);
 
                             fseek(f, 0, SEEK_SET);
-                            h_recv(clients[id].sock, &mb, sizeof(int), 0);
+                            h_recv(clients[id].sock, &mb, 4, 0);
 
                             if (1 > mb > 0xFFFF){
                                 printf("[SERVER] [HANDLE_CLIENT_%d] %s: wants to recieve above or below mb limit (%d)\n", id, name, mb);
@@ -185,7 +185,7 @@ void* handle_client(void* args){
 
                             printf("[SERVER] [HANDLE_CLIENT_%d] %s: sending video in %dB chunks\n", id, name, mb);
 
-                            h_send(clients[id].sock, &fsize, sizeof(long), 0);
+                            h_send(clients[id].sock, &fsize, 8, 0);
 
                             if (fsize > mb){
                                 size_t br;
@@ -223,7 +223,7 @@ void* handle_client(void* args){
                         break;
                     case 2:
                         printf("[SERVER] [HANDLE_CLIENT_%d] %s: Client sent PAUSE\n", id, name);
-                        h_recv(clients[id].sock, &time, sizeof(libvlc_time_t), 0);
+                        h_recv(clients[id].sock, &time, 8, 0);
 
                         svideo.pause = !svideo.pause;
                         svideo.time = time;
@@ -232,7 +232,7 @@ void* handle_client(void* args){
 
                         break;
                     case 3:
-                        send(clients[id].sock, &svideo, sizeof(struct video), 0);
+                        send(clients[id].sock, &svideo, 16, 0);
 
                         break;
                     /* case 4:
@@ -253,8 +253,8 @@ void* handle_client(void* args){
                         char* cc;
                         char* sc;
                         
-                        h_recv(clients[id].sock, &fsize, sizeof(long), 0);
-                        h_recv(clients[id].sock, &vcs, sizeof(int), 0);
+                        h_recv(clients[id].sock, &fsize, 8, 0);
+                        h_recv(clients[id].sock, &vcs, 4, 0);
 
                         if (1 > vcs > 0xFFFF){
                             printf("[SERVER] [HANDLE_CLIENT_%d] %s: wants to recieve above or below mb limit (%d)\n", id, name, vcs);
@@ -278,7 +278,7 @@ void* handle_client(void* args){
                             while(poll(&pfd, 1, 1000)){
                                 ssize_t r = recv(sock, cc, vcs, 0);
 
-                                recv(clients[id].sock, &cc, sizeof(vcs), 0);
+                                recv(clients[id].sock, &cc, 4, 0);
                                 fread(sc, 1, vcs, vf);
 
                                 int status = strcmp(cc, sc);
@@ -289,10 +289,10 @@ void* handle_client(void* args){
 
                                 if (r <= 0) break;
 
-                                send(clients[id].sock, &status, sizeof(int), 0);
+                                send(clients[id].sock, &status, 4, 0);
                             }
                         } else {
-                            recv(clients[id].sock, &cc, sizeof(vcs), 0);
+                            recv(clients[id].sock, &cc, 4, 0);
                             fread(sc, 1, vcs, vf);
 
                             int status = strcmp(cc, sc);
@@ -301,7 +301,7 @@ void* handle_client(void* args){
                                 printf("0 ");
                             }
 
-                            send(clients[id].sock, &status, sizeof(int), 0);
+                            send(clients[id].sock, &status, 4, 0);
                         }
 
                         printf("\n[SERVER] [HANDLE_CLIENT_%d] %s: finished verifying video in %dB chunks\n", id, name, vcs);

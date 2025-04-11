@@ -1,4 +1,3 @@
-#include <math.h>
 #include <poll.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -14,7 +13,7 @@ volatile int run = 1;
 volatile int vlc_ready = 0;
 
 struct video {
-    libvlc_time_t time;
+    int64_t time;
     int pause;
 };
 
@@ -137,8 +136,8 @@ void* video_control(void*){
 
                 switch (e.key.keysym.sym){
                     case SDLK_SPACE:
-                        send(sock, &op, sizeof(int), 0);
-                        send(sock, &vtime, sizeof(libvlc_time_t), 0);
+                        send(sock, &op, 4, 0);
+                        send(sock, &vtime, 8, 0);
 
                         break;
                     case SDLK_RIGHT:
@@ -247,6 +246,7 @@ void* video_player(void*){
         if (tvs == 0){
             tvs = libvlc_media_player_get_length(player);
         }
+
         usleep(1000000);
     }
 
@@ -369,7 +369,7 @@ int main(int argc, char** argv){
     op = 1;
 
     connect(sock, (struct sockaddr*)&addr, sizeof(addr));
-    h_send(sock, &ulen, sizeof(int), 0);
+    h_send(sock, &ulen, 4, 0);
     h_send(sock, username, ulen, 0);
 
     long fsize;
@@ -382,12 +382,12 @@ int main(int argc, char** argv){
     }
 
     if (!exists("video.mp4")){
-        h_send(sock, &op, sizeof(int), 0);
-        h_send(sock, &mb, sizeof(int), 0);
+        h_send(sock, &op, 4, 0);
+        h_send(sock, &mb, 4, 0);
 
         FILE* f = fopen("video.mp4", "wb");
 
-        h_recv(sock, &fsize, sizeof(long), 0);
+        h_recv(sock, &fsize, 8, 0);
 
         if (fsize > mb){
             chunk = malloc(mb);
@@ -422,7 +422,7 @@ int main(int argc, char** argv){
     }
 
     if (verify){
-        printf("verifying file size\n");
+        /* printf("verifying file size\n");
 
         FILE* vf = fopen("video.mp4", "rb");
         int status = 0;
@@ -434,9 +434,9 @@ int main(int argc, char** argv){
         fsize = ftell(vf);
 
         printf("verifying %dB\n", fsize);
-        h_send(sock, &op, sizeof(int), 0);
-        h_send(sock, &fsize, sizeof(long), 0);
-        h_send(sock, &mb, sizeof(int), 0);
+        h_send(sock, &op, 4, 0);
+        h_send(sock, &fsize, 8, 0);
+        h_send(sock, &mb, 4, 0);
 
         printf("differences in chunks: ");
 
@@ -449,7 +449,7 @@ int main(int argc, char** argv){
 
             while ((br = fread(chunk, 1, mb, vf)) > 0){
                 h_send(sock, chunk, br, 0);
-                h_recv(sock, &status, sizeof(int), 0);
+                h_recv(sock, &status, 4, 0);
 
                 if (status){
                     printf("%ld ", cid);
@@ -463,7 +463,7 @@ int main(int argc, char** argv){
             fread(chunk, 1, fsize, vf);
             h_send(sock, chunk, fsize, 0);
 
-            h_recv(sock, &status, sizeof(int), 0);
+            h_recv(sock, &status, 4, 0);
 
             if (status){
                 printf("0");
@@ -471,7 +471,7 @@ int main(int argc, char** argv){
         }
 
         fclose(vf);
-        printf("\n");
+        printf("\n"); */
     }
 
     if (chunk != NULL){
@@ -500,8 +500,8 @@ int main(int argc, char** argv){
     int prdy = 0;
     
     while (run){
-        send(sock, &op, sizeof(int), 0);
-        recv(sock, &svideo, sizeof(struct video), 0);
+        send(sock, &op, 4, 0);
+        recv(sock, &svideo, 16, 0);
 
         if (svideo.pause){
             cvpause();
@@ -537,6 +537,7 @@ int main(int argc, char** argv){
     sprintf(vas, "%d", vol);
     fprintf(vfo, vas);
     fclose(vfo);
+    close(sock);
 
     return 0;
 }
