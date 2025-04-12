@@ -353,7 +353,7 @@ int main(int argc, char** argv){
     sock = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sock < 1){
-        perror("there was an error connecting to the server");
+        perror("there was an error creating sock");
         
         return -1;
     }
@@ -361,14 +361,39 @@ int main(int argc, char** argv){
     int op;
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = port;
+    addr.sin_port = htons(port);
 
     inet_pton(AF_INET, ip, &addr.sin_addr);
     printf("connecting to %s:%d\n", ip, port);
 
     op = 1;
 
-    connect(sock, (struct sockaddr*)&addr, sizeof(addr));
+    int constat;
+    int ctrys = 1;
+
+    while (1){
+        constat = connect(sock, (struct sockaddr*)&addr, sizeof(addr));
+
+        if (constat != 0){
+            perror("there was an error connecting to server");
+            printf("attempting to connect, tried to connect %d times.\r", ctrys);
+            fflush(stdout);
+
+            ctrys += 1;
+
+            if (ctrys > 7){
+                printf("attempted to connect %d times and failed, quitting...\n", ctrys);
+                fflush(stdout);
+
+                return -1;
+            }
+
+            usleep(500000);
+        } else {
+            break;
+        }
+    }
+
     h_send(sock, &ulen, 4, 0);
     h_send(sock, username, ulen, 0);
 
@@ -378,7 +403,9 @@ int main(int argc, char** argv){
     printf("checking for video\n");
 
     if (update){
-        remove("video.mp4");
+        if (exists("video.mp4")){
+            remove("video.mp4");
+        }
     }
 
     if (!exists("video.mp4")){
@@ -388,6 +415,7 @@ int main(int argc, char** argv){
         FILE* f = fopen("video.mp4", "wb");
 
         h_recv(sock, &fsize, 8, 0);
+        printf("downloading %ldB video\n", fsize);
 
         if (fsize > mb){
             chunk = malloc(mb);

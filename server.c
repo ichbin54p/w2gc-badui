@@ -103,7 +103,7 @@ void* handle_client(void* args){
     int usize;
     int vidrecv = 0;
     char auth = 0;
-    char* name;
+    char* name = NULL;
     struct pollfd pfd;
 
     pfd.fd = clients[id].sock;
@@ -180,12 +180,21 @@ void* handle_client(void* args){
                                 printf("[SERVER] [HANDLE_CLIENT_%d] %s: wants to recieve above or below mb limit (%d)\n", id, name, mb);
 
                                 fq = 1;
+
                                 break;
                             }
 
                             printf("[SERVER] [HANDLE_CLIENT_%d] %s: sending video in %dB chunks\n", id, name, mb);
 
-                            h_send(clients[id].sock, &fsize, 8, 0);
+                            int fsst = send(clients[id].sock, &fsize, 8, 0);
+
+                            if (fsst <= 0){
+                                printf("[SERVER] [HANDLE_CLIENT_%d] %s: disconnected during video transfer\n", id, name);
+                                
+                                fq = 1;
+
+                                break;
+                            }
 
                             if (fsize > mb){
                                 size_t br;
@@ -196,6 +205,8 @@ void* handle_client(void* args){
 
                                     if (status < 0){
                                         printf("[SERVER] [HANDLE_CLIENT_%d] %s: disconnected during video transfer\n", id, name);
+
+                                        fq = 1;
 
                                         break;
                                     }
@@ -329,7 +340,7 @@ void* handle_client(void* args){
 
     close(clients[id].sock);
 
-    if (name) free(name);
+    if (name == NULL) free(name);
 
     printf("[SERVER] [HANDLE_CLIENT_%d] thread finished\n", id);
 }
@@ -481,7 +492,7 @@ int main(int argc, char** argv){
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
     addr.sin_family = AF_INET;
-    addr.sin_port = port;
+    addr.sin_port = htons(port);
     svideo.pause = 1;
     svideo.time = 5;
     inet_pton(AF_INET, ip, &addr.sin_addr);
