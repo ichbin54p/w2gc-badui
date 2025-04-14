@@ -1,6 +1,6 @@
 w2gc is a watch-together app where you can watch videos in real-time with your friends! **NOTE** this project is still a W.I.P, feedback and critizism is apprecciated.
 
-**NOTE** this project is meant for Linux and running / compiling it on windows won't work.
+**NOTE** this project is meant for Linux and running / compiling it on windows won't work. Using the python client is recommended but you will need WSL for the server.
 
 ## Instructions
 
