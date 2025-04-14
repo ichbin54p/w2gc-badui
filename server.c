@@ -257,7 +257,7 @@ void* handle_client(void* args){
                         printf("[SERVER] [HANDLE_CLIENT_%d] %s: (%d) time %ld\n", id, name, svideo.pause, time);
 
                         break; */
-                    case 5:
+                    /* case 5:
                         printf("[SERVER] [HANDLE_CLIENT_%d] %s: Verifying if client has video\n", id, name);
 
                         FILE* vf = fopen(video_path, "r");
@@ -324,7 +324,7 @@ void* handle_client(void* args){
                         free(sc);
                         fclose(vf);
 
-                        break;
+                        break; */
                     default:
                         printf("[SERVER] [HANDLE_CLIENT_%d] %s: Unknown op %d\n", id, name, op);
 
