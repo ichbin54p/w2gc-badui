@@ -94,7 +94,7 @@ int h_send(int sock, void* ptr, size_t s, int f){
 
 void* handle_client(void* args){
     int id = *(int*) args;
-
+    
     printf("[SERVER] [HANDLE_CLIENT_%d] handling client...\n", id);
 
     int c;
@@ -159,6 +159,8 @@ void* handle_client(void* args){
                 switch(op){
                     case 0:
                         printf("[SERVER] [HANDLE_CLIENT_%d] %s: Client sent NOOP \n", id, name);
+
+                        break;
                     case 1:
                         printf("[SERVER] [HANDLE_CLIENT_%d] %s: Sending video? (%d)\n", id, name, vidrecv);
 
@@ -321,6 +323,8 @@ void* handle_client(void* args){
                         free(cc);
                         free(sc);
                         fclose(vf);
+
+                        break;
                     default:
                         printf("[SERVER] [HANDLE_CLIENT_%d] %s: Unknown op %d\n", id, name, op);
 
@@ -482,7 +486,7 @@ int main(int argc, char** argv){
     clients = malloc(max_conn * sizeof(struct client));
     client_threads = malloc(max_conn * sizeof(pthread_t));
 
-    printf("[SERVER] [START] using %d bytes for clients and client_threads...\n", max_conn * sizeof(struct client) + max_conn * sizeof(int));
+    printf("[SERVER] [START] using %d bytes for clients and client_threads. using %d bytes for video\n", max_conn * sizeof(struct client) + max_conn * sizeof(int), sizeof(struct video));
 
     for (int i = 0; i < max_conn; i++){
         clients[i].online = 0;
