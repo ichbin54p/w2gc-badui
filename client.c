@@ -526,7 +526,6 @@ int main(int argc, char** argv){
     printf("Threads created \n");
 
     int prdy = 0;
-    ttrf = ttt(tvs / 1000);
     
     while (run){
         send(sock, &op, 4, 0);
@@ -543,6 +542,7 @@ int main(int argc, char** argv){
             prdy += 1;
         } else {
             tsrf = ttt(vtime / 1000);
+            ttrf = ttt(tvs / 1000);
 
             printf("Time: %d %d:%d / %d %d:%d Volume: %d%         \r", tsrf.hours, tsrf.minutes, tsrf.seconds, ttrf.hours, ttrf.minutes, ttrf.seconds, vol);
             fflush(stdout);
