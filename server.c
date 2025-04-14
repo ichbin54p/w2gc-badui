@@ -18,7 +18,7 @@ struct client {
 };
 
 struct video {
-    libvlc_time_t time;
+    int64_t time;
     int pause;
 };
 
