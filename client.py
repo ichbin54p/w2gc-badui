@@ -178,6 +178,9 @@ def video_control():
     
     pygame.quit()
 
+    if run:
+        run = False
+
 for i in range(1, len(argv), 2):
     if argv[i] == "-ip":
         arguements['ip'] = argv[i+1]
@@ -269,6 +272,9 @@ while run:
 
     sleep(0.2)
 
+if run:
+    run = False
+    
 print("quitting program")
 
 player.stop()
