@@ -160,7 +160,7 @@ def video_control():
                     if vol > 0:
                         player.audio_set_volume(vol - 5)
 
-        vpg = time / tvidlen * 800
+        vpg = (time + 1) / tvidlen * 800
         vopg = vol * 8
         
         pygame.draw.rect(window, pygame.Color(80, 80, 80), (0, pgps, 800, 30))
