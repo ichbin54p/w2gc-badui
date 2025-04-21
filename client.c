@@ -41,7 +41,7 @@ struct rdbtimestamp tsrf;
 struct rdbtimestamp ttrf;
 
 void help(char* argv_0){
-    printf("Usage: %s [ARGS]\n-ip [ADDRESS]\n-p, -port [INT]\n-n, -username [NAME]\n-h, -help\n-b -max-bytes [INT]\n-v, -verify [0 | 1]\n-u, -update-video [0 | 1]\n-c, -decompress [0 | 1]\n-s, -milliseconds [INT]\n-p, -progress-bar-update-speed [INT]\n", argv_0);
+    printf("Usage: %s [ARGS]\n-ip [ADDRESS]\n-p, -port [INT]\n-n, -username [NAME]\n-h, -help\n-b -max-bytes [INT]\n-v, -verify [0 | 1]\n-u, -update-video [0 | 1]\n-c, -decompress [0 | 1]\n-s, -milliseconds [INT]\n-l, -progress-bar-update-speed [INT]\n", argv_0);
 }
 
 int h_recv(int sock, void* ptr, size_t s, int f){
@@ -450,14 +450,10 @@ int main(int argc, char** argv){
         if (fsize > mb){
             chunk = malloc(mb);
 
-            struct pollfd pfd;
-            pfd.fd = sock;
-            pfd.events = POLLIN;
-
             int progress = 0;
             int bar_size = 0;
 
-            while(poll(&pfd, 1, ms) && progress < fsize){
+            while(progress < fsize){
                 ssize_t r = recv(sock, chunk, mb, 0);
 
                 if (r <= 0) break;
@@ -478,7 +474,7 @@ int main(int argc, char** argv){
                         }
                     }
 
-                    printf("] %.2f%%\r", (float)((progress / (float)fsize) * 100));
+                    printf("] %.2f%%", (float)((progress / (float)fsize) * 100));
                     fflush(stdout);
 
                     pbu = 0;
