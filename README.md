@@ -70,7 +70,7 @@ Now, running the client is pretty straight forward, same with the server, you ca
 - `-u, -update-video` when joining the server, replace the current video.mp4 with the server's video, not recommended to run if you already have the same video as the server.
 - `-c, -decompress` decompress the video, only do this if the server compresses the video
 - `-s, -milliseconds` time in milliseconds for polling the socket fd
-- `-p, -progress-bar-update-speed` the update speed of the progress bar when downloading the video from server, increasing this value can make downloading faster
+- `-l, -progress-bar-update-speed` the update speed of the progress bar when downloading the video from server, increasing this value can make downloading faster
 
 An example of joining the server we just ran
 

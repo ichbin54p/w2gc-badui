@@ -353,8 +353,8 @@ int main(int argc, char** argv){
                 decompress = atoi(argv[i+1]);
             } else if (strcmp(&argv[i][1], "milliseconds") == 0 || strcmp(&argv[i][1], "s") == 0){
                 ms = atoi(argv[i+1]);
-            } else if (strcmp(&argv[i][1], "progress-bar-update-speed") == 0 || strcmp(&argv[i][1], "p") == 0){
-                ms = atoi(argv[i+1]);
+            } else if (strcmp(&argv[i][1], "progress-bar-update-speed") == 0 || strcmp(&argv[i][1], "l") == 0){
+                pbus = atoi(argv[i+1]);
             }
         } else {
             printf("Unkown arguement %s\n", argv[i]);
