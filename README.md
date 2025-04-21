@@ -8,21 +8,33 @@ w2gc is a watch-together app where you can watch videos in real-time with your f
 
 `sdl2`, `vlc`, `libvlc`
 
-Installing on arch
+Installing on pacman
 
 ```sh
 sudo pacman -S sdl2 vlc libvlc
 ```
 
+Installing on apt
+
+```sh
+sudo apt install libsdl2-dev vlc libvlc-dev
+```
+
 ### Compiling
+
+Compiling server:
+
+```sh
+gcc server.c -o server
+```
 
 Compiling client:
 
 ```sh
-gcc server.c -o server $(pkg-config --cflags --libs libvlc)
+gcc client.c -o client -lvlc -lSDL2
 ```
 
-Compiling server:
+or
 
 ```sh
 gcc client.c -o client $(pkg-config --cflags --libs libvlc) $(sdl2-config --cflags --libs)
@@ -37,6 +49,9 @@ Before you run the server, you need to specify some arguements so the server kno
 - `-m, -max-connections` maximum amount of connections, at a time
 - `-h, -help` displays a help message
 - `-f, -input-file` path to the video used in the watch-together
+- `-c, -compress` whether to compress the video or not
+- `-u, -update-compressed` replace `t.xz`
+- `-s, -milliseconds` currently, no use
 
 An example of running a server on localhost:25565 with the video video.mp4
 
@@ -53,6 +68,9 @@ Now, running the client is pretty straight forward, same with the server, you ca
 - `-b, -max-bytes` for downloading the video, maximum amount of bites to recieve from the server in chunks, max and default = `0xFFFF`
 - `-v, -verify` W.I.P, verify if your video is the same as the servers
 - `-u, -update-video` when joining the server, replace the current video.mp4 with the server's video, not recommended to run if you already have the same video as the server.
+- `-c, -decompress` decompress the video, only do this if the server compresses the video
+- `-s, -milliseconds` time in milliseconds for polling the socket fd
+- `-p, -progress-bar-update-speed` the update speed of the progress bar when downloading the video from server, increasing this value can make downloading faster
 
 An example of joining the server we just ran
 
@@ -73,5 +91,17 @@ Focus on the video control "panel" to use it, you can do the following:
 - `RIGHT` skip forward 5 seconds
 - `UP` increase volume by 5%
 - `DOWN` decrease volume by 5%
+- `F` or `F11` to toggle fullscreen
 
 If the video control window is closed, the client will automaticly quit and close the media player as well as clean up. It is recommend to close the video control window so you get a clean exit.
+
+## Credits
+
+Developed by 54p and maintained by 54p
+Thanks to friends for testing
+
+## To-do
+
+- Add windows support in C
+
+- Fix python client

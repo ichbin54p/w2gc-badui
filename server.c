@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
-#include <vlc/vlc.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
@@ -23,12 +22,13 @@ struct video {
 };
 
 void help(char* argv_0){
-    printf("Usage: %s [ARGS]\n-ip [ADDRESS]\n-p, -port [INT]\n-m, -max-connections [INT]\n-h, -help\n-f, -input-file [PATH]\n", argv_0);
+    printf("Usage: %s [ARGS]\n-ip [ADDRESS]\n-p, -port [INT]\n-m, -max-connections [INT]\n-h, -help\n-f, -input-file [PATH]\n-c, -compress [0 | 1]\n-u, -update-compressed\n-s, -milliseconds [INT]\n", argv_0);
 }
 
 volatile int run = 1;
 
 int max_conn = 5;
+int ms = 1000;
 int sock;
 char* video_path = NULL;
 
@@ -153,7 +153,7 @@ void* handle_client(void* args){
                     printf("[SERVER] [HANDLE_CLIENT_%d] %s: Recieved op %d\n", id, name, op);
                 }
 
-                libvlc_time_t time;
+                uint64_t time;
                 long fsize;
 
                 switch(op){
@@ -248,83 +248,6 @@ void* handle_client(void* args){
                         send(clients[id].sock, &svideo, 16, 0);
 
                         break;
-                    /* case 4:
-                        printf("[SERVER] [HANDLE_CLIENT_%d] %s: Client sent SKIP\n", id, name);
-                        h_recv(clients[id].sock, &time, sizeof(libvlc_time_t), 0);
-
-                        svideo.time = time;
-
-                        printf("[SERVER] [HANDLE_CLIENT_%d] %s: (%d) time %ld\n", id, name, svideo.pause, time);
-
-                        break; */
-                    /* case 5:
-                        printf("[SERVER] [HANDLE_CLIENT_%d] %s: Verifying if client has video\n", id, name);
-
-                        FILE* vf = fopen(video_path, "r");
-                        long chid = 0;
-                        int vcs = 0xFFFF;
-                        char* cc;
-                        char* sc;
-                        
-                        h_recv(clients[id].sock, &fsize, 8, 0);
-                        h_recv(clients[id].sock, &vcs, 4, 0);
-
-                        if (1 > vcs > 0xFFFF){
-                            printf("[SERVER] [HANDLE_CLIENT_%d] %s: wants to recieve above or below mb limit (%d)\n", id, name, vcs);
-
-                            fq = 1;
-                            break;
-                        }
-
-                        cc = malloc(vcs);
-                        sc = malloc(vcs);
-
-                        printf("[SERVER] [HANDLE_CLIENT_%d] %s: differences in chunks: ", id, name);
-
-                        if (fsize > vcs){
-                            struct pollfd pfd;
-                            pfd.fd = sock;
-                            pfd.events = POLLIN;
-
-                            printf("\n");
-
-                            while(poll(&pfd, 1, 1000)){
-                                ssize_t r = recv(sock, cc, vcs, 0);
-
-                                recv(clients[id].sock, &cc, 4, 0);
-                                fread(sc, 1, vcs, vf);
-
-                                int status = strcmp(cc, sc);
-
-                                if (status != 0){
-                                    printf("%ld ", chid);
-                                }
-
-                                if (r <= 0) break;
-
-                                send(clients[id].sock, &status, 4, 0);
-                            }
-                        } else {
-                            recv(clients[id].sock, &cc, 4, 0);
-                            fread(sc, 1, vcs, vf);
-
-                            int status = strcmp(cc, sc);
-
-                            if (status != 0){
-                                printf("0 ");
-                            }
-
-                            send(clients[id].sock, &status, 4, 0);
-                        }
-
-                        printf("\n[SERVER] [HANDLE_CLIENT_%d] %s: finished verifying video in %dB chunks\n", id, name, vcs);
-
-                        printf("[SERVER] [HANDLE_CLIENT_%d] %s: cleaning up\n", id, name);
-                        free(cc);
-                        free(sc);
-                        fclose(vf);
-
-                        break; */
                     default:
                         printf("[SERVER] [HANDLE_CLIENT_%d] %s: Unknown op %d\n", id, name, op);
 
@@ -443,6 +366,8 @@ void handle_quit(int sig){
 int main(int argc, char** argv){
     int port = 25565;
     int ulen;
+    int compress = 0;
+    int update = 0;
     char* ip = NULL;
 
     for (int i = 1; i < argc; i+=2){
@@ -451,7 +376,7 @@ int main(int argc, char** argv){
                 ip = malloc(strlen(argv[i+1]));
                 memcpy(ip, argv[i+1], strlen(argv[i+1]));
             } else if (strcmp(&argv[i][1], "input-file") == 0 || strcmp(&argv[i][1], "f") == 0){
-                video_path = malloc(strlen(argv[i+1]));
+                video_path = malloc(strlen(argv[i+1]) + 2);
                 memcpy(video_path, argv[i+1], strlen(argv[i+1]));
             } else if (strcmp(&argv[i][1], "port") == 0 || strcmp(&argv[i][1], "p") == 0){
                 port = atoi(argv[i+1]);
@@ -463,13 +388,19 @@ int main(int argc, char** argv){
                 help(argv[0]);
 
                 return 0;
+            } else if (strcmp(&argv[i][1], "compress") == 0 || strcmp(&argv[i][1], "c") == 0){
+                compress = atoi(argv[i+1]);
+            } else if (strcmp(&argv[i][1], "update-compressed") == 0 || strcmp(&argv[i][1], "u") == 0){
+                update = atoi(argv[i+1]);
+            } else if (strcmp(&argv[i][1], "milliseconds") == 0 || strcmp(&argv[i][1], "s") == 0){
+                ms = atoi(argv[i+1]);
             }
         } else {
             printf("Unkown arguement %s\n", argv[i]);
         }
     }
 
-    if (ip == NULL || video_path == NULL){
+    if (ip == NULL || video_path == NULL || !exists(video_path) || ms < 1){
         help(argv[0]);
 
         if (ip){
@@ -479,6 +410,20 @@ int main(int argc, char** argv){
         }
 
         return -1;
+    }
+
+    if (compress){
+        if (update){
+            char command[256]; 
+
+            printf("compressing video\n");
+            sprintf(command, "zstd -9 -T0 -c %s > t.xz", video_path);
+
+            printf("system: %s\n", command);
+            system(command);
+        }
+
+        strcpy(video_path, "t.xz");
     }
 
     signal(SIGINT, handle_quit);
@@ -501,26 +446,22 @@ int main(int argc, char** argv){
     svideo.time = 5;
     inet_pton(AF_INET, ip, &addr.sin_addr);
 
-    printf("[SERVER] [START] starting server at %s:%d, max connections: %d\n", ip, port, max_conn);
+    printf("[SERVER] [START] starting server at %s:%d, max connections: %d, transfer speed %d\n", ip, port, max_conn, ms);
 
     bind(sock, (struct sockaddr*)&addr, sizeof(addr));
     listen(sock, max_conn);
 
     pthread_t handle_clients_id;
     pthread_t handle_threads_id;
-    // pthread_t handle_server_terminal_id;
 
     pthread_create(&handle_clients_id, NULL, handle_clients, NULL);
     pthread_create(&handle_threads_id, NULL, handle_threads, NULL);
-    // pthread_create(&handle_server_terminal_id, NULL, handle_server_terminal, NULL);
 
     while (run){}
 
     close(sock);
 
     printf("[CLEANUP] [MAIN] stopping threads\n");
-    // pthread_join(handle_server_terminal_id, NULL);
-    // printf("[CLEANUP] [MAIN] handle_server_terminal thread stopped...\n");
     pthread_join(handle_clients_id, NULL);
     printf("[CLEANUP] [MAIN] handle_clients thread stopped...\n");
     pthread_join(handle_threads_id, NULL);

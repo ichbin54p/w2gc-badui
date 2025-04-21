@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <vlc/vlc.h>
 #include <SDL2/SDL.h>
+#include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
@@ -34,12 +35,13 @@ libvlc_media_player_t* player;
 libvlc_time_t vtime;
 libvlc_time_t tvs = 0;
 
+struct winsize ts;
 struct video svideo;
 struct rdbtimestamp tsrf;
 struct rdbtimestamp ttrf;
 
 void help(char* argv_0){
-    printf("Usage: %s [ARGS]\n-ip [ADDRESS]\n-p, -port [INT]\n-n, -username [NAME]\n-h, -help\n-b -max-bytes [INT]\n-v, -verify [0 | 1]\n-u, -update-video [0 | 1]\n", argv_0);
+    printf("Usage: %s [ARGS]\n-ip [ADDRESS]\n-p, -port [INT]\n-n, -username [NAME]\n-h, -help\n-b -max-bytes [INT]\n-v, -verify [0 | 1]\n-u, -update-video [0 | 1]\n-c, -decompress [0 | 1]\n-s, -milliseconds [INT]\n-p, -progress-bar-update-speed [INT]\n", argv_0);
 }
 
 int h_recv(int sock, void* ptr, size_t s, int f){
@@ -160,6 +162,13 @@ void* video_control(void*){
                         }
 
                         break;
+                    case SDLK_f:
+                    case SDLK_F11:
+                        int fullscreen = libvlc_get_fullscreen(player);
+
+                        libvlc_set_fullscreen(player, !fullscreen);
+
+                        break;
                 }
             }
         }
@@ -209,7 +218,12 @@ void* video_control(void*){
 }
 
 void* video_player(void*){
-    instance = libvlc_new(0, NULL);
+    const char* args[2] = {
+        "--video-x=0",
+        "--video-y=0"
+    };
+
+    instance = libvlc_new(2, args);
 
     printf("created instance\n");
 
@@ -276,12 +290,15 @@ void cvplay(){
 }
 
 int main(int argc, char** argv){
+    int decompress = 0;
     int verify = 0;
     int update = 0;
     int port = 25565;
     int ulen = 0;
     int iup = 0;
     int mb = 0xFFFF;
+    int ms = 1000;
+    int pbus = 10;
     char* ip = NULL;
     char* username = NULL;
     FILE* tvf;
@@ -332,13 +349,19 @@ int main(int argc, char** argv){
                 if (ip != NULL) free(ip);
                 
                 return 0;
+            } else if (strcmp(&argv[i][1], "decompress") == 0 || strcmp(&argv[i][1], "c") == 0){
+                decompress = atoi(argv[i+1]);
+            } else if (strcmp(&argv[i][1], "milliseconds") == 0 || strcmp(&argv[i][1], "s") == 0){
+                ms = atoi(argv[i+1]);
+            } else if (strcmp(&argv[i][1], "progress-bar-update-speed") == 0 || strcmp(&argv[i][1], "p") == 0){
+                ms = atoi(argv[i+1]);
             }
         } else {
             printf("Unkown arguement %s\n", argv[i]);
         }
     }
 
-    if (ip == NULL || username == NULL || port < 1024 || ulen < 3 || ulen > 64 || mb > 0xFFFF || mb < 1){
+    if (ip == NULL || username == NULL || port < 1024 || ulen < 3 || ulen > 64 || mb > 0xFFFF || mb < 1 || ms < 1 && pbus < 0){
         if (ip){
             free(ip);
         } else if (username){
@@ -346,6 +369,12 @@ int main(int argc, char** argv){
         }
 
         help(argv[0]);
+
+        return -1;
+    }
+
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ts) == -1){
+        printf("ioctl error\n");
 
         return -1;
     }
@@ -413,6 +442,7 @@ int main(int argc, char** argv){
         h_send(sock, &mb, 4, 0);
 
         FILE* f = fopen("video.mp4", "wb");
+        int pbu = 0;
 
         h_recv(sock, &fsize, 8, 0);
         printf("downloading %ldB video\n", fsize);
@@ -425,19 +455,36 @@ int main(int argc, char** argv){
             pfd.events = POLLIN;
 
             int progress = 0;
+            int bar_size = 0;
 
-            printf("\n");
-
-            while(poll(&pfd, 1, 1000)){
+            while(poll(&pfd, 1, ms) && progress < fsize){
                 ssize_t r = recv(sock, chunk, mb, 0);
-
-                printf("%d%%\r", (int)((progress / (float)fsize) * 100));
 
                 if (r <= 0) break;
 
                 fwrite(chunk, 1, r, f);
+                printf("\r[");
 
                 progress += r;
+
+                if (pbu > pbus){
+                    bar_size = (int)((progress / (float)fsize) * (1 * (ts.ws_col - 10)));
+
+                    for (int i = 0; i < ts.ws_col - 10; i++){
+                        if (i <= bar_size){
+                            printf("#");
+                        } else {
+                            printf(".");
+                        }
+                    }
+
+                    printf("] %.2f%%\r", (float)((progress / (float)fsize) * 100));
+                    fflush(stdout);
+
+                    pbu = 0;
+                }
+
+                pbu += 1;
             }
         } else {
             chunk = malloc(fsize);
@@ -447,65 +494,17 @@ int main(int argc, char** argv){
         }
 
         fclose(f);
+        printf("\nfinished downloading video\n");
     }
 
-    if (verify){
-        /* printf("verifying file size\n");
+    if (decompress){
+        printf("decompressing video\n");
+        printf("system: cp video.mp4 tempv.xz\nsystem: rm video.mp4\nsystem: zstd -d -c tempv.xz > video.mp4\nsystem: rm tempv.xz\n");
 
-        FILE* vf = fopen("video.mp4", "rb");
-        int status = 0;
-        long cid = 0;
-
-        fseek(vf, 0, SEEK_END);
-
-        op = 5;
-        fsize = ftell(vf);
-
-        printf("verifying %dB\n", fsize);
-        h_send(sock, &op, 4, 0);
-        h_send(sock, &fsize, 8, 0);
-        h_send(sock, &mb, 4, 0);
-
-        printf("differences in chunks: ");
-
-        if (fsize >= mb){
-            size_t br;
-
-            if (chunk == NULL){
-                chunk = malloc(mb);
-            }
-
-            while ((br = fread(chunk, 1, mb, vf)) > 0){
-                h_send(sock, chunk, br, 0);
-                h_recv(sock, &status, 4, 0);
-
-                if (status){
-                    printf("%ld ", cid);
-                }
-            }
-        } else {
-            if (chunk == NULL){
-                chunk = malloc(fsize);
-            }
-
-            fread(chunk, 1, fsize, vf);
-            h_send(sock, chunk, fsize, 0);
-
-            h_recv(sock, &status, 4, 0);
-
-            if (status){
-                printf("0");
-            }
-        }
-
-        fclose(vf);
-        printf("\n"); */
-    }
-
-    if (chunk != NULL){
-        printf("freeing chunk\n");
-
-        free(chunk);
+        system("cp video.mp4 tempv.xz");
+        system("rm video.mp4");
+        system("zstd -d -c tempv.xz > video.mp4");
+        system("rm tempv.xz");
     }
 
     printf("defining threads\n");
